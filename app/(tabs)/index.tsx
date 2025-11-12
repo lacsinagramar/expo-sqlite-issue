@@ -1,11 +1,73 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Button, Platform, StyleSheet } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
+import * as SQLite from 'expo-sqlite';
+
+const db = SQLite.openDatabaseSync('myDatabase.db');
+
+const query1 = `SELECT 
+    pck.Id AS PackingId,
+    r.Id AS RuleId,
+    r.RuleType,
+    r.Description AS RuleDescription,
+    ss.Code AS PbsCode,
+    pt.PbsType,
+    COALESCE(ss.NumberRepeats, ss.OriginalNumberRepeats) AS Repeats,
+    OriginalMaxQuantityPack AS MaxQtyPacks,
+    CASE WHEN UnitOfMeasure IS NULL THEN CAST(MaxQuantity AS varchar(10)) ELSE MaxQuantity || ' ' || UnitOfMeasure END AS MaxQtyUnits,
+    pssm.NumberOfPack,
+    pssm.PbsEquiv,
+    pck.AU_ARTG as Artg,
+    pt.ProgramCode AS ProgramCode,
+    pt.ProgramDescription,
+    pssm.TgpPrice,
+    pssm.BppPrice,
+    pssm.PbsPrice,
+    ss.Name AS SubsidySchemeName
+  FROM 
+    ProductGrouping pg
+    INNER JOIN Brand b ON pg.BrandId = b.Id
+    INNER JOIN rel_Brand_Monograph rbm ON rbm.BrandId = b.Id
+    INNER JOIN Monograph m ON m.Id = rbm.MonographId
+    INNER JOIN rel_Product_ProductGrouping rpp ON rpp.ProductGroupingId = pg.Id 
+    INNER JOIN Packing pck ON pck.ProductId = rpp.ProductId
+    INNER JOIN PackingSubsidySchemeMapping pssm ON pck.Id = pssm.PackingId
+    INNER JOIN SubsidyScheme ss ON pssm.SubsidySchemeId = ss.Id 
+    LEFT JOIN Rule r ON r.Id = pssm.RuleId
+    LEFT JOIN PbsProgramType pt ON pt.ProgramCode = ss.DrugTypeCode
+  WHERE 
+    m.Id = '0003fef3-5c71-4c09-9524-14b6441df6b4'
+  ORDER BY 
+    ss.Code;
+`
+const query2 = `SELECT 
+    pck.Id AS PackingId,
+    r.Id AS RuleId,
+    r.RuleType,
+    r.Description AS RuleDescription,
+    pssm.NumberOfPack,
+    pssm.PbsEquiv,
+    pck.AU_ARTG as Artg,
+    pssm.TgpPrice,
+    pssm.BppPrice,
+    pssm.PbsPrice
+  FROM 
+    ProductGrouping pg
+    INNER JOIN Brand b ON pg.BrandId = b.Id
+    INNER JOIN rel_Brand_Monograph rbm ON rbm.BrandId = b.Id
+    INNER JOIN Monograph m ON m.Id = rbm.MonographId
+    INNER JOIN rel_Product_ProductGrouping rpp ON rpp.ProductGroupingId = pg.Id 
+    INNER JOIN Packing pck ON pck.ProductId = rpp.ProductId
+    INNER JOIN PackingSubsidySchemeMapping pssm ON pck.Id = pssm.PackingId
+    LEFT JOIN Rule r ON r.Id = pssm.RuleId
+  WHERE 
+    m.Id = '0003fef3-5c71-4c09-9524-14b6441df6b4'
+`
 
 export default function HomeScreen() {
   return (
@@ -73,6 +135,18 @@ export default function HomeScreen() {
           <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
           <ThemedText type="defaultSemiBold">app-example</ThemedText>.
         </ThemedText>
+      </ThemedView>
+      <ThemedView>
+        <Button color='red' title='Slow Query' onPress={async () => {
+          const result1 = await db.getAllAsync(query1)
+          console.log({ result1 })
+          const result2 = await db.getAllAsync(query2)
+          console.log({ result2 })
+        }} />
+        <Button color='red' title='Fast Query' onPress={async () => {
+          const result2 = await db.getAllAsync(query2)
+          console.log({ result2 })
+        }} />
       </ThemedView>
     </ParallaxScrollView>
   );
