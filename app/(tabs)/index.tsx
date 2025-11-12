@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('myDatabase.db');
+const db = SQLite.openDatabaseSync('test.db');
 
 const query1 = `SELECT 
     pck.Id AS PackingId,
